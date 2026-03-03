@@ -40,15 +40,17 @@ For a Next.js app, **Vercel is a very good choice**:
    - Region close to your users  
    - Create.
 3. Wait until the project is **Ready**.
-4. **Connection string**  
+4. **Connection string (must use pooler for Vercel)**  
    - **Settings** → **Database**  
-   - **Connection string** → **URI**  
-   - Copy the URI. It looks like:
+   - Under **Connection string**, choose **URI** and select **Transaction** (or **Session**) mode — the one that uses the **pooler** host, **not** the direct database host.  
+   - The correct host looks like: `aws-0-us-east-1.pooler.supabase.com` (or your region) with port **6543**.  
+   - **Wrong (will fail on Vercel):** `db.xxxxxxxx.supabase.co` (direct connection).  
+   - **Right:** `aws-0-<region>.pooler.supabase.com:6543`  
+   - Example:
      ```text
-     postgresql://postgres.[project-ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres
+     postgresql://postgres.[project-ref]:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
      ```
-   - Replace `[YOUR-PASSWORD]` with your database password.  
-   - For serverless (Vercel), use the **pooler** (port **6543**) and **Transaction** mode if Supabase shows that option.
+   - Replace `[YOUR-PASSWORD]` with your database password. If the password contains special characters (e.g. `#`, `@`, `%`), URL-encode them (e.g. `%23`, `%40`, `%25`).
 5. **Run migrations and seed once** (from your machine, with the same URI):
    ```bash
    export DATABASE_URL="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres"
@@ -139,6 +141,12 @@ The hero image is downloaded by a script in Docker. On Vercel there is no such s
 ## Troubleshooting
 
 - **Build fails:** Remove `output: 'standalone'` from `next.config.mjs` if present.
-- **DB connection errors:** Use the **pooler** URI (port **6543**), not the direct connection port. Enable **Supabase → Settings → Database → Connection pooling** if needed.
+- **`getaddrinfo ENOTFOUND db.xxxxx.supabase.co` or "Failed to fetch events":** Your app is still using the **direct** host (`db.xxx.supabase.co`). Fix it as follows:
+  1. **Get the pooler URI:** Supabase → **Settings** → **Database** → **Connection string** → **URI** tab → switch to **Transaction** (or **Session**) mode. Copy the URI; the host must be `aws-0-<region>.pooler.supabase.com` and port **6543**.
+  2. **Set it in Vercel:** Project → **Settings** → **Environment Variables**. Find **DATABASE_URL**.
+  3. **Replace, don’t just edit:** Delete the existing **DATABASE_URL** (trash icon), then **Add new** with name `DATABASE_URL` and value = the pooler URI (paste, then replace `[YOUR-PASSWORD]` with your DB password). Set **Environment** to **Production** (and **Preview** if you use preview URLs).
+  4. **Redeploy:** **Deployments** → open the **⋯** menu on the latest deployment → **Redeploy** (check "Use existing Build Cache" **unchecked** so env is re-read). Wait for the new deployment to finish and open the **production** URL.
+  5. If it still shows the old host, the deployment may be from a branch that has different env: confirm you’re on the same branch and that **Production** has the new `DATABASE_URL`.
+- **DB connection errors (other):** Use the **pooler** URI (port **6543**), not the direct connection. Ensure the password in the URI is URL-encoded if it contains `#`, `@`, `%`, etc.
 - **Cron not running:** Confirm **CRON_SECRET** is set in Vercel and that the cron in `vercel.json` is deployed (crons run only on production deployments). On Hobby, the job runs once per day at 08:00 UTC.
 - **No new events in feed:** Run ingest once locally with Supabase `DATABASE_URL` to seed; then wait for the next daily cron run or call `GET /api/cron/ingest` with `Authorization: Bearer <CRON_SECRET>` manually. For more frequent updates, use an external cron service.
