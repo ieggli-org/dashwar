@@ -12,17 +12,11 @@ function getDatabaseUrl(): string {
       'DATABASE_URL is not set. Set it in .env.local or your environment.'
     );
   }
-  try {
-    const parsed = new URL(url.replace(/^postgres(ql)?:/, 'https:'));
-    const host = parsed.hostname || '';
-    if (host.startsWith('db.') && host.endsWith('.supabase.co')) {
-      throw new Error(
-        `DATABASE_URL must use the Supabase pooler, not the direct host (${host}). ${POOLER_HELP}`
-      );
-    }
-  } catch (e) {
-    if (e instanceof Error && e.message.includes('DATABASE_URL must use')) throw e;
-    // URL parse failed (e.g. postgresql:// without host); let postgres() handle it
+  // Detect direct Supabase host (fails on Vercel). Check raw string so we catch it even if URL parsing fails.
+  if (url.includes('db.') && url.includes('.supabase.co') && !url.includes('pooler.supabase.com')) {
+    throw new Error(
+      `DATABASE_URL must use the Supabase pooler, not the direct host (db.xxx.supabase.co). ${POOLER_HELP}`
+    );
   }
   return url;
 }

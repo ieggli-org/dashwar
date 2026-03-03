@@ -140,13 +140,41 @@ The hero image is downloaded by a script in Docker. On Vercel there is no such s
 
 ## Troubleshooting
 
+### "DATABASE_URL must use the Supabase pooler, not the direct host (db.xxx.supabase.co)"
+
+Your `DATABASE_URL` in Vercel is still the **direct** connection. Do this:
+
+1. **Get your pooler URI from Supabase**
+   - Open [Supabase Dashboard](https://supabase.com/dashboard) → your project.
+   - Go to **Project Settings** (gear) → **Database**.
+   - Scroll to **Connection string**.
+   - Select the **"URI"** tab.
+   - You may see a dropdown or tabs: choose **"Transaction"** or **"Session"** (the one that shows a host like `aws-0-XX.pooler.supabase.com` and **port 6543**). Do **not** use the option that shows `db.xxxxx.supabase.co`.
+   - Copy the URI and replace `[YOUR-PASSWORD]` with your database password.
+
+   **Or build it manually:** If the dashboard only shows the direct URI, use this template (replace `YOUR_PASSWORD` and `REGION`):
+   ```text
+   postgresql://postgres.icbnsataiervthiljrtd:YOUR_PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres
+   ```
+   For `REGION` use your project’s region, e.g. `us-east-1`, `eu-west-1`, `ap-southeast-1` (see **Project Settings → General → Region** in Supabase). If the password contains `#`, `@`, or `%`, URL-encode them (`%23`, `%40`, `%25`).  
+   **Important:** The username in the URI must be `postgres.icbnsataiervthiljrtd` (i.e. `postgres.` + project ref), **not** just `postgres`. Otherwise you get "Tenant or user not found".
+
+2. **Set it in Vercel**
+   - Vercel → your project → **Settings** → **Environment Variables**.
+   - **Delete** the existing `DATABASE_URL` (trash icon).
+   - **Add new**: Name = `DATABASE_URL`, Value = the pooler URI from step 1. Environment = **Production** (and **Preview** if you use previews). Save.
+
+3. **Redeploy**
+   - **Deployments** → **⋯** on latest → **Redeploy** → leave **"Use existing Build Cache"** **unchecked** → Redeploy. Open the production URL when it’s done.
+
 - **Build fails:** Remove `output: 'standalone'` from `next.config.mjs` if present.
-- **`getaddrinfo ENOTFOUND db.xxxxx.supabase.co` or "Failed to fetch events":** Your app is still using the **direct** host (`db.xxx.supabase.co`). Fix it as follows:
+- **`getaddrinfo ENOTFOUND db.xxxxx.supabase.co` or "Failed to fetch events":** Same as above: switch to the pooler URI and redeploy. Steps:
   1. **Get the pooler URI:** Supabase → **Settings** → **Database** → **Connection string** → **URI** tab → switch to **Transaction** (or **Session**) mode. Copy the URI; the host must be `aws-0-<region>.pooler.supabase.com` and port **6543**.
   2. **Set it in Vercel:** Project → **Settings** → **Environment Variables**. Find **DATABASE_URL**.
   3. **Replace, don’t just edit:** Delete the existing **DATABASE_URL** (trash icon), then **Add new** with name `DATABASE_URL` and value = the pooler URI (paste, then replace `[YOUR-PASSWORD]` with your DB password). Set **Environment** to **Production** (and **Preview** if you use preview URLs).
   4. **Redeploy:** **Deployments** → open the **⋯** menu on the latest deployment → **Redeploy** (check "Use existing Build Cache" **unchecked** so env is re-read). Wait for the new deployment to finish and open the **production** URL.
   5. If it still shows the old host, the deployment may be from a branch that has different env: confirm you’re on the same branch and that **Production** has the new `DATABASE_URL`.
-- **DB connection errors (other):** Use the **pooler** URI (port **6543**), not the direct connection. Ensure the password in the URI is URL-encoded if it contains `#`, `@`, `%`, etc.
+- **"Tenant or user not found" (code XX000):** The pooler identifies your project by **username**. The username in `DATABASE_URL` must be `postgres.[project-ref]` (e.g. `postgres.icbnsataiervthiljrtd`), not just `postgres`. Copy the full URI from Supabase **Settings → Database → Connection string → Transaction** (don’t build it with a plain `postgres` user).
+- **DB connection errors (other):** Use the **pooler** URI (port **6543**), not the direct connection. Username = `postgres.[project-ref]`. URL-encode the password if it contains `#`, `@`, `%`, etc.
 - **Cron not running:** Confirm **CRON_SECRET** is set in Vercel and that the cron in `vercel.json` is deployed (crons run only on production deployments). On Hobby, the job runs once per day at 08:00 UTC.
 - **No new events in feed:** Run ingest once locally with Supabase `DATABASE_URL` to seed; then wait for the next daily cron run or call `GET /api/cron/ingest` with `Authorization: Bearer <CRON_SECRET>` manually. For more frequent updates, use an external cron service.
