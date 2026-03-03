@@ -1,0 +1,10 @@
+node_modules
+.next
+.env
+.env.local
+.env*.local
+!.env.example
+drizzle/*.sql
+!drizzle/0000_init.sql
+*.log
+.DS_Store

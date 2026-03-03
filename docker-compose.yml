@@ -1,0 +1,71 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file: .env.local
+    environment:
+      DATABASE_URL: postgresql://dashwar:dashwar@postgres:5432/dashwar
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dashwar
+
+  dev:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npx tsx lib/db/migrate.ts && npm run ingest && rm -rf .next && npm run dev"
+    volumes:
+      - .:/app
+      - app_node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    env_file: .env.local
+    environment:
+      DATABASE_URL: postgresql://dashwar:dashwar@postgres:5432/dashwar
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dashwar
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: dashwar
+      POSTGRES_PASSWORD: dashwar
+      POSTGRES_DB: dashwar
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dashwar -d dashwar"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dashwar
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dashwar
+
+volumes:
+  postgres_data:
+  redis_data:
+  app_node_modules:
+
+networks:
+  dashwar:
+    driver: bridge
