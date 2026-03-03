@@ -81,9 +81,9 @@ You’ll use this **same** `DATABASE_URL` in Vercel.
 5. **Deploy**.  
    - Build and deploy. If the build fails, check that `next.config.mjs` does **not** use `output: 'standalone'` (that’s for Docker, not Vercel).
 6. **Cron (RSS ingest)**  
-   - The repo includes `vercel.json` with a cron that calls `/api/cron/ingest` every 10 minutes.  
-   - Vercel sends `Authorization: Bearer <CRON_SECRET>`; the API route checks `CRON_SECRET`, so ensure **`CRON_SECRET`** is set in Vercel.  
-   - On the **Hobby** plan you have a limited number of cron jobs; the single ingest job is enough.
+   - The repo includes `vercel.json` with a cron that calls `/api/cron/ingest` **once per day at 08:00 UTC** (Hobby plan allows only daily crons).  
+   - Set **`CRON_SECRET`** in Vercel; Vercel Cron sends it as `Authorization: Bearer <CRON_SECRET>`.  
+   - **More frequent ingest without Pro:** use an external cron (e.g. [cron-job.org](https://cron-job.org)) to call `GET https://your-app.vercel.app/api/cron/ingest` with header `Authorization: Bearer <your-CRON_SECRET>` every 10–60 minutes.
 
 Your app will be live at `https://<project>.vercel.app` (or your custom domain).
 
@@ -112,7 +112,7 @@ If you later add caching or sessions that need Redis, you can use e.g. **Upstash
 - [ ] Repo connected to Vercel; **DATABASE_URL** and **CRON_SECRET** set.
 - [ ] First Vercel deploy successful.
 - [ ] (Optional) Custom domain added in Vercel and DNS configured.
-- [ ] Open the app URL and confirm feed loads; after ~10 minutes, cron will have run and new RSS items can appear.
+- [ ] Open the app URL and confirm feed loads; the built-in cron runs once daily (08:00 UTC); for more frequent updates use an external cron (see step 2.6).
 
 ---
 
@@ -140,5 +140,5 @@ The hero image is downloaded by a script in Docker. On Vercel there is no such s
 
 - **Build fails:** Remove `output: 'standalone'` from `next.config.mjs` if present.
 - **DB connection errors:** Use the **pooler** URI (port **6543**), not the direct connection port. Enable **Supabase → Settings → Database → Connection pooling** if needed.
-- **Cron not running:** Confirm **CRON_SECRET** is set in Vercel and that the cron in `vercel.json` is deployed (crons run only on production deployments).
-- **No new events in feed:** Run ingest once locally with Supabase `DATABASE_URL` to seed; then wait for the next cron run (every 10 minutes) or call `GET /api/cron/ingest` with `Authorization: Bearer <CRON_SECRET>` manually to test.
+- **Cron not running:** Confirm **CRON_SECRET** is set in Vercel and that the cron in `vercel.json` is deployed (crons run only on production deployments). On Hobby, the job runs once per day at 08:00 UTC.
+- **No new events in feed:** Run ingest once locally with Supabase `DATABASE_URL` to seed; then wait for the next daily cron run or call `GET /api/cron/ingest` with `Authorization: Bearer <CRON_SECRET>` manually. For more frequent updates, use an external cron service.
