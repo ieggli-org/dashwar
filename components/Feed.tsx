@@ -39,6 +39,7 @@ function getApiUrl(): string {
 
 export type FeedLabels = {
   title: string;
+  sectionDesc?: string;
   search: string;
   allTypes: string;
   allActors: string;
@@ -225,7 +226,8 @@ export function Feed({ labels: labelsProp }: Props) {
 
   return (
     <div className="feed-page">
-      <h1>{labels.title}</h1>
+      <h1 id="feed-section-title" className="section-title">{labels.title}</h1>
+      <p className="section-desc">{labels.sectionDesc ?? 'Filter and search events by type, actor, and date.'}</p>
       <form onSubmit={handleSearch} className="filters">
         <input
           type="search"

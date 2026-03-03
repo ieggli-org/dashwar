@@ -8,8 +8,19 @@ const LOCALE_KEY = 'dashwar-locale';
 
 const defaultEn: Record<string, unknown> = {
   nav: { home: 'Home', map: 'Map', impact: 'Impact & outlook' },
+  hero: {
+    title: 'USA / Israel–Iran conflict',
+    tagline: 'Real-time news, official statements, and events with clear source attribution. Filter by type, actor, and date.',
+    feedCardTitle: 'Live feed',
+    feedCardDesc: 'Timeline of events and breaking news',
+    mapCardTitle: 'Map',
+    mapCardDesc: 'Events by location',
+    impactCardTitle: 'Impact & outlook',
+    impactCardDesc: 'Markets, transport, country impact',
+  },
   feed: {
     title: 'Live feed',
+    sectionDesc: 'Filter and search events by type, actor, and date.',
     search: 'Search…',
     allTypes: 'All types',
     allActors: 'All actors',
