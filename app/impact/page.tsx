@@ -1,11 +1,6 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-
-const ImpactPageContent = dynamic(
-  () => import('@/components/ImpactPageContent'),
-  { ssr: false, loading: () => <p className="impact-loading">Loading…</p> }
-);
+import ImpactPageContent from '@/components/ImpactPageContent';
 
 export default function ImpactPage() {
   return <ImpactPageContent />;

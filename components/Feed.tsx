@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { format } from 'date-fns';
+import { useLocale } from '@/contexts/LocaleContext';
 
 const EVENT_TYPES = [
   'breaking_news',
@@ -84,9 +85,13 @@ type Props = {
   labels?: Partial<FeedLabels>;
 };
 
+type TranslatedEvent = { title: string; body: string | null };
+
 export function Feed({ labels: labelsProp }: Props) {
   const labels = { ...DEFAULT_LABELS, ...labelsProp };
+  const { locale } = useLocale();
   const [events, setEvents] = useState<EventRow[]>([]);
+  const [translated, setTranslated] = useState<Record<string, TranslatedEvent>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
@@ -100,13 +105,15 @@ export function Feed({ labels: labelsProp }: Props) {
   const pollIntervalMs =
     typeof process.env.NEXT_PUBLIC_POLL_INTERVAL_MS !== 'undefined'
       ? Number(process.env.NEXT_PUBLIC_POLL_INTERVAL_MS)
-      : 120000;
+      : 30000;
 
   const fetchEvents = useCallback(
     async (resetOffset = false) => {
       const o = resetOffset ? 0 : offset;
       setLoading(true);
       setError(null);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       try {
         const base = getApiUrl() || '';
         const params = new URLSearchParams();
@@ -118,7 +125,7 @@ export function Feed({ labels: labelsProp }: Props) {
         if (to) params.set('to', to);
         params.set('limit', '30');
         params.set('offset', String(o));
-        const res = await fetch(`${base}/api/events?${params}`);
+        const res = await fetch(`${base}/api/events?${params}`, { signal: controller.signal });
         if (!res.ok) throw new Error('Failed to fetch events');
         const data = await res.json();
         if (resetOffset) {
@@ -129,24 +136,86 @@ export function Feed({ labels: labelsProp }: Props) {
           setOffset(o + (data.events?.length ?? 0));
         }
         setHasMore((data.events?.length ?? 0) === 30);
+        const list = data.events ?? [];
+        if (list.length > 0 && locale !== 'en') {
+          try {
+            const base = getApiUrl() || '';
+            const res = await fetch(`${base}/api/translate`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                targetLocale: locale,
+                items: list.map((e: EventRow) => ({ title: e.title, body: e.body ?? null })),
+              }),
+            });
+            if (res.ok) {
+              const data2 = await res.json();
+              const items = data2.items as { title: string; body: string | null }[] | undefined;
+              if (Array.isArray(items) && items.length === list.length) {
+                const next: Record<string, TranslatedEvent> = {};
+                list.forEach((ev: EventRow, i: number) => {
+                  next[ev.id] = items[i] ?? { title: ev.title, body: ev.body ?? null };
+                });
+                setTranslated((prev) => ({ ...prev, ...next }));
+              }
+            }
+          } catch (err) {
+            console.error('Translate feed failed', err);
+          }
+        } else if (locale === 'en') {
+          setTranslated({});
+        }
       } catch (e) {
         console.error('Fetch events failed', e);
-        setError(e instanceof Error ? e.message : 'Failed to load events');
+        const msg = e instanceof Error ? e.message : 'Failed to load events';
+        setError(e instanceof Error && e.name === 'AbortError' ? 'Request timed out. Try again.' : msg);
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
       }
     },
-    [q, eventType, actor, sourceType, from, to, offset]
+    [q, eventType, actor, sourceType, from, to, offset, locale]
   );
 
   useEffect(() => {
     fetchEvents(true);
-  }, [eventType, actor, sourceType, from, to]);
+  }, [fetchEvents, eventType, actor, sourceType, from, to, locale]);
 
   useEffect(() => {
     const t = setInterval(() => fetchEvents(true), pollIntervalMs);
     return () => clearInterval(t);
-  }, [pollIntervalMs, eventType, actor, sourceType, from, to]);
+  }, [pollIntervalMs, eventType, actor, sourceType, from, to, locale]);
+
+  // When locale changes, translate current events if not English
+  useEffect(() => {
+    if (locale === 'en') {
+      setTranslated({});
+      return;
+    }
+    if (events.length === 0) return;
+    let cancelled = false;
+    const list = events;
+    const base = getApiUrl() || '';
+    fetch(`${base}/api/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        targetLocale: locale,
+        items: list.map((e) => ({ title: e.title, body: e.body ?? null })),
+      }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.items || data.items.length !== list.length) return;
+        const next: Record<string, TranslatedEvent> = {};
+        list.forEach((ev, i) => {
+          next[ev.id] = data.items[i] ?? { title: ev.title, body: ev.body ?? null };
+        });
+        setTranslated((prev) => ({ ...prev, ...next }));
+      })
+      .catch((err) => console.error('Translate on locale change failed', err));
+    return () => { cancelled = true; };
+  }, [locale, events]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,7 +287,11 @@ export function Feed({ labels: labelsProp }: Props) {
       {error && <p className="error">{error}</p>}
       {loading && events.length === 0 && <p>{labels.loading}</p>}
       <ul className="timeline">
-        {events.map((ev) => (
+        {events.map((ev) => {
+          const tx = locale !== 'en' ? translated[ev.id] : null;
+          const displayTitle = tx ? tx.title : ev.title;
+          const displayBody = tx ? tx.body : ev.body;
+          return (
           <li key={ev.id} className="timeline-item">
             <div className="timeline-meta">
               <time dateTime={ev.occurredAt}>
@@ -232,8 +305,8 @@ export function Feed({ labels: labelsProp }: Props) {
                 <span className="location">{ev.location}</span>
               )}
             </div>
-            <h3>{ev.title}</h3>
-            {ev.body && <p>{ev.body}</p>}
+            <h3>{displayTitle}</h3>
+            {displayBody && <p>{displayBody}</p>}
             <div className="source-attribution">
               {labels.source}:{' '}
               {ev.sourceName ?? 'Unknown'}
@@ -256,7 +329,8 @@ export function Feed({ labels: labelsProp }: Props) {
               </p>
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
       {events.length > 0 && hasMore && (
         <button

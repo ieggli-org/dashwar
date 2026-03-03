@@ -14,7 +14,7 @@ function getApiUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL ?? '';
 }
 
-type ImpactSection = 'market' | 'transport' | 'investments';
+type ImpactSection = 'market' | 'transport' | 'investments' | 'tourism_flights' | 'country_impact';
 
 export default function ImpactPageContent() {
   const { t, locale } = useLocale();
@@ -22,21 +22,27 @@ export default function ImpactPageContent() {
     market: '',
     transport: '',
     investments: '',
+    tourism_flights: '',
+    country_impact: '',
   });
   const [loading, setLoading] = useState<Record<ImpactSection, boolean>>({
     market: true,
     transport: true,
     investments: true,
+    tourism_flights: true,
+    country_impact: true,
   });
   const [error, setError] = useState<Record<ImpactSection, boolean>>({
     market: false,
     transport: false,
     investments: false,
+    tourism_flights: false,
+    country_impact: false,
   });
 
   useEffect(() => {
     const base = getApiUrl() || '';
-    const categories: ImpactSection[] = ['market', 'transport', 'investments'];
+    const categories: ImpactSection[] = ['market', 'transport', 'investments', 'tourism_flights', 'country_impact'];
     categories.forEach((category) => {
       fetch(`${base}/api/impact/analysis?category=${category}&locale=${locale}`)
         .then((res) => {
@@ -60,6 +66,8 @@ export default function ImpactPageContent() {
     { key: 'market', labelKey: 'impact.market' },
     { key: 'transport', labelKey: 'impact.transport' },
     { key: 'investments', labelKey: 'impact.investments' },
+    { key: 'tourism_flights', labelKey: 'impact.tourismFlights' },
+    { key: 'country_impact', labelKey: 'impact.countryImpact' },
   ];
 
   return (

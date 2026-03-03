@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category') ?? 'market';
     const locale = searchParams.get('locale') ?? 'en';
-    const validCategories = ['market', 'transport', 'investments'];
+    const validCategories = ['market', 'transport', 'investments', 'tourism_flights', 'country_impact'];
     if (!validCategories.includes(category)) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
     }
@@ -67,8 +67,12 @@ function getPrompt(category: string, eventsSummary: string, locale: string): str
       ? 'financial markets, commodities, currencies, and stock indices'
       : category === 'transport'
         ? 'maritime and air transport, supply chains, shipping routes, and logistics'
-        : 'foreign direct investment, sovereign funds, and sector-specific investments';
-  return `You are an objective analyst. Based on the following recent conflict-related events, write a short, factual analysis (2–4 paragraphs) on probable impacts in: ${focus}. Use ${lang}. Be neutral and cite only the event summary. Do not speculate beyond what the events suggest.\n\nEvents:\n${eventsSummary}`;
+        : category === 'tourism_flights'
+          ? 'tourism and flights: which regions and routes are impacted (e.g. Eastern Mediterranean, Gulf, Israel, Iran, neighbouring countries), flight cancellations or rerouting, travel advisories, and impact on tourism in affected and nearby countries'
+          : category === 'country_impact'
+            ? 'list of countries that could be impacted and in what timeframe. For each country give: country name, approximate timeframe (e.g. "in 1–2 weeks", "in 3 weeks", "already impacted"), and type of impact (e.g. gas/fuel prices, supply chains, travel, inflation). Format as short bullet points, one per country.'
+            : 'foreign direct investment, sovereign funds, and sector-specific investments';
+  return `You are an objective analyst. Based on the following recent conflict-related events, write a short, factual analysis (2–4 paragraphs for narrative categories; for country_impact use clear bullet points) on: ${focus}. Use ${lang}. Be neutral and cite only the event summary. Do not speculate beyond what the events suggest.\n\nEvents:\n${eventsSummary}`;
 }
 
 async function fetchOpenAIAnalysis(apiKey: string, prompt: string): Promise<string | null> {
@@ -103,6 +107,10 @@ function getFallbackAnalysis(category: string, locale: string): string {
       'Maritime and air routes in the region face rerouting and insurance adjustments when tensions rise. Supply chains with exposure to the Eastern Mediterranean and Gulf may see delays and higher costs. Objective monitoring of official advisories and shipping notices is recommended.',
     investments:
       'Sector-specific and geographic exposure drive investment impact. Defence and energy sectors often react to conflict headlines; regional FDI and sovereign flows can be delayed or repriced. Diversification and adherence to risk frameworks remain standard mitigants.',
+    tourism_flights:
+      'Tourism and flights: Regions directly impacted include Israel, Iran, and neighbouring countries (Lebanon, Syria, Iraq, Jordan). Airlines have rerouted or cancelled some services over the Eastern Mediterranean and Gulf. Travel advisories are in effect for several countries. Tourism in the wider Middle East and Eastern Mediterranean may be affected; travellers should check official advisories and carrier updates.',
+    country_impact:
+      '• Israel, Iran, Lebanon, Syria, Iraq, Jordan — already impacted (security, flights, borders).\n• Gulf states (UAE, Bahrain, Kuwait, Saudi Arabia) — 1–2 weeks: flight rerouting, higher insurance, possible fuel-price pass-through.\n• Turkey, Egypt — 1–3 weeks: tourism and overflight effects, energy costs.\n• EU (e.g. Germany, France, Italy) — 2–4 weeks: fuel and energy prices, supply-chain delays.\n• USA, Canada — 2–4 weeks: gas prices and refined-product imports may rise.\n• Asia (e.g. India, China) — 3–6 weeks: oil and shipping costs if Strait of Hormuz or Suez is affected.',
   };
   const pt: Record<string, string> = {
     market:
@@ -111,6 +119,10 @@ function getFallbackAnalysis(category: string, locale: string): string {
       'Rotas marítimas e aéreas na região podem sofrer desvios e ajustes de seguro. Cadeias de abastecimento com exposição ao Mediterrâneo Oriental e ao Golfo podem registar atrasos e custos mais elevados.',
     investments:
       'O impacto nos investimentos depende da exposição setorial e geográfica. Sectores de defesa e energia reagem frequentemente a notícias de conflito; fluxos de IED e soberanos na região podem ser adiados ou repreciados.',
+    tourism_flights:
+      'Turismo e voos: Regiões diretamente impactadas incluem Israel, Irão e países vizinhos (Líbano, Síria, Iraque, Jordânia). Companhias aéreas desviaram ou cancelaram alguns serviços sobre o Mediterrâneo Oriental e o Golfo. Avisos de viagem estão em vigor. O turismo no Médio Oriente e Mediterrâneo Oriental pode ser afetado; consulte avisos oficiais e as companhias aéreas.',
+    country_impact:
+      '• Israel, Irão, Líbano, Síria, Iraque, Jordânia — já impactados (segurança, voos, fronteiras).\n• Estados do Golfo (EAU, Barém, Kuwait, Arábia Saudita) — 1–2 semanas: desvios de voos, seguros, preços de combustível.\n• Turquia, Egipto — 1–3 semanas: turismo e sobrevoo, custos energéticos.\n• UE (Alemanha, França, Itália) — 2–4 semanas: preços de combustível e energia, atrasos na cadeia de abastecimento.\n• EUA, Canadá — 2–4 semanas: preços da gasolina podem subir.\n• Ásia (Índia, China) — 3–6 semanas: petróleo e custos de transporte se o Estreito de Ormuz ou Suez forem afetados.',
   };
   const es: Record<string, string> = {
     market:
@@ -119,7 +131,11 @@ function getFallbackAnalysis(category: string, locale: string): string {
       'Las rutas marítimas y aéreas en la región pueden sufrir desvíos y ajustes de seguros. Las cadenas de suministro con exposición al Mediterráneo Oriental y al Golfo pueden ver retrasos y mayores costes.',
     investments:
       'El impacto en inversiones depende de la exposición sectorial y geográfica. Los sectores de defensa y energía suelen reaccionar a noticias del conflicto; los flujos de IED y soberanos en la región pueden retrasarse o repreciarse.',
+    tourism_flights:
+      'Turismo y vuelos: Regiones directamente impactadas incluyen Israel, Irán y países vecinos (Líbano, Siria, Irak, Jordania). Aerolíneas han desviado o cancelado servicios sobre el Mediterráneo Oriental y el Golfo. Avisos de viaje en vigor. El turismo en Oriente Medio y el Mediterráneo Oriental puede verse afectado; consulte avisos oficiales y aerolíneas.',
+    country_impact:
+      '• Israel, Irán, Líbano, Siria, Irak, Jordania — ya impactados (seguridad, vuelos, fronteras).\n• Estados del Golfo (EAU, Baréin, Kuwait, Arabia Saudí) — 1–2 semanas: desvíos de vuelos, seguros, precios de combustible.\n• Turquía, Egipto — 1–3 semanas: turismo y sobrevuelo, costes energéticos.\n• UE (Alemania, Francia, Italia) — 2–4 semanas: precios de combustible y energía, retrasos en cadena de suministro.\n• EE.UU., Canadá — 2–4 semanas: subida posible de precios de gasolina.\n• Asia (India, China) — 3–6 semanas: petróleo y costes de envío si se afectan el Estrecho de Ormuz o Suez.',
   };
   const m = locale === 'pt' ? pt : locale === 'es' ? es : en;
-  return m[category] ?? m.market;
+  return m[category] ?? m.market ?? '';
 }

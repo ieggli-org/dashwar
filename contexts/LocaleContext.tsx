@@ -24,10 +24,12 @@ const defaultEn: Record<string, unknown> = {
   },
   impact: {
     title: 'Impact & outlook',
-    subtitle: 'Probable effects on markets, transport, and investments — with objective analysis.',
+    subtitle: 'Probable effects on markets, transport, investments, tourism and flights, and country-level impact — with objective analysis.',
     market: 'Markets',
     transport: 'Transport & logistics',
     investments: 'Investments',
+    tourismFlights: 'Tourism & flights',
+    countryImpact: 'Country impact timeline',
     analysisLoading: 'Generating analysis…',
     analysisError: 'Analysis temporarily unavailable.',
     eventsSummary: 'Events summary',

@@ -16,14 +16,15 @@
     "local:up": "docker compose up -d postgres redis && echo 'Waiting for Postgres...' && until docker compose exec -T postgres pg_isready -U dashwar -d dashwar 2>/dev/null; do sleep 1; done && npm run db:migrate:run && npm run ingest && npm run dev"
   },
   "dependencies": {
+    "date-fns": "^3.0.0",
+    "drizzle-orm": "^0.29.0",
     "next": "^14.2.0",
+    "postgres": "^3.4.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "drizzle-orm": "^0.29.0",
-    "postgres": "^3.4.0",
-    "recharts": "^2.10.0",
     "react-simple-maps": "^3.0.0",
-    "date-fns": "^3.0.0",
+    "recharts": "^2.10.0",
+    "rss-parser": "^3.13.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
@@ -31,9 +32,9 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "drizzle-kit": "^0.20.0",
-    "typescript": "^5.0.0",
-    "tsx": "^4.0.0",
     "eslint": "^8.0.0",
-    "eslint-config-next": "^14.2.0"
+    "eslint-config-next": "^14.2.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
   }
 }

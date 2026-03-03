@@ -3,6 +3,7 @@ import './globals.css';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { LocaleProvider } from '@/contexts/LocaleContext';
+import { ChunkLoadErrorHandler } from '@/components/ChunkLoadErrorHandler';
 
 export const metadata: Metadata = {
   title: 'Dashwar — USA/Israel–Iran Conflict Information',
@@ -18,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <ChunkLoadErrorHandler />
         <LocaleProvider>
           <Header />
           <main className="main">{children}</main>
