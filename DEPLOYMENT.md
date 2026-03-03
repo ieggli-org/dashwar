@@ -1,5 +1,7 @@
 # Deploy Dashwar to GitHub, Supabase, and dashwar.leoieggli.me
 
+**Quick path (Vercel + Supabase only):** See **[docs/DEPLOY_VERCEL_SUPABASE.md](docs/DEPLOY_VERCEL_SUPABASE.md)** for a step-by-step that explains Supabase vs Vercel, performance, and cron for RSS ingest.
+
 This guide covers: (1) pushing the repo to your GitHub org, (2) using Supabase as the database, (3) deploying the app on Vercel, and (4) adding the custom domain **dashwar.leoieggli.me**.
 
 ---
