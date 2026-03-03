@@ -183,4 +183,4 @@ Vercel will issue an SSL certificate for `dashwar.leoieggli.me` automatically on
 | `OPENAI_API_KEY`    | Optional; for Impact AI analysis         |
 | `NEXT_PUBLIC_*`     | Only if you need overrides; else leave unset for same-origin |
 
-***Redis is optional; the app runs without it. For production you can leave `REDIS_URL` unset unless you add caching later.
+**Redis is optional; the app runs without it. For production you can leave `REDIS_URL` unset unless you add caching later.
