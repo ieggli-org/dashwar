@@ -4,6 +4,7 @@ node_modules
 .env.local
 .env*.local
 !.env.example
+scripts/.env.ingest
 drizzle/*.sql
 !drizzle/0000_init.sql
 *.log

@@ -12,6 +12,8 @@
     "db:migrate:run": "tsx lib/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "ingest": "tsx lib/ingest/run.ts",
+    "ingest:periodic": "./scripts/ingest-periodic.sh",
+    "ingest:trigger-vercel": "./scripts/trigger-vercel-ingest.sh",
     "db:refresh": "tsx lib/ingest/refresh.ts",
     "local:up": "docker compose up -d postgres redis && echo 'Waiting for Postgres...' && until docker compose exec -T postgres pg_isready -U dashwar -d dashwar 2>/dev/null; do sleep 1; done && npm run db:migrate:run && npm run ingest && npm run dev"
   },

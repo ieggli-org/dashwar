@@ -167,6 +167,11 @@ Your `DATABASE_URL` in Vercel is still the **direct** connection. Do this:
 3. **Redeploy**
    - **Deployments** → **⋯** on latest → **Redeploy** → leave **"Use existing Build Cache"** **unchecked** → Redeploy. Open the production URL when it’s done.
 
+- **Production (Vercel) not updating / feed stale while localhost is fine:** The production app reads from **Supabase** (Vercel’s `DATABASE_URL`). Ingest must run **on Vercel** (cron or external trigger) or against that same Supabase URL. Do this:
+  1. **Vercel env (Production):** In Vercel → **Project → Settings → Environment Variables**, ensure **`DATABASE_URL`** is the Supabase pooler URI and **`CRON_SECRET`** is set (e.g. `openssl rand -hex 32`). Apply to **Production**. Redeploy so the new env is used.
+  2. **Test the ingest endpoint:** Call `GET https://dashwar-prod.vercel.app/api/cron/ingest` with header `Authorization: Bearer <your-CRON_SECRET>`. If you get **401**, fix or add `CRON_SECRET` in Vercel and try again. If you get **200** and `"ok": true`, ingest ran on Vercel and new events should appear after a refresh.
+  3. **Ongoing updates:** Built-in Vercel Cron runs **once per day at 08:00 UTC**. For more frequent updates (e.g. every 30–60 min), use an external cron: [cron-job.org](https://cron-job.org) or similar — call `GET https://dashwar-prod.vercel.app/api/cron/ingest` with header `Authorization: Bearer <CRON_SECRET>` on your desired schedule. You can also run `./scripts/trigger-vercel-ingest.sh` from this repo (see script header) to trigger ingest on demand.
+
 - **Build fails:** Remove `output: 'standalone'` from `next.config.mjs` if present.
 - **`getaddrinfo ENOTFOUND db.xxxxx.supabase.co` or "Failed to fetch events":** Same as above: switch to the pooler URI and redeploy. Steps:
   1. **Get the pooler URI:** Supabase → **Settings** → **Database** → **Connection string** → **URI** tab → switch to **Transaction** (or **Session**) mode. Copy the URI; the host must be `aws-0-<region>.pooler.supabase.com` and port **6543**.
@@ -177,4 +182,22 @@ Your `DATABASE_URL` in Vercel is still the **direct** connection. Do this:
 - **"Tenant or user not found" (code XX000):** The pooler identifies your project by **username**. The username in `DATABASE_URL` must be `postgres.[project-ref]` (e.g. `postgres.icbnsataiervthiljrtd`), not just `postgres`. Copy the full URI from Supabase **Settings → Database → Connection string → Transaction** (don’t build it with a plain `postgres` user).
 - **DB connection errors (other):** Use the **pooler** URI (port **6543**), not the direct connection. Username = `postgres.[project-ref]`. URL-encode the password if it contains `#`, `@`, `%`, etc.
 - **Cron not running:** Confirm **CRON_SECRET** is set in Vercel and that the cron in `vercel.json` is deployed (crons run only on production deployments). On Hobby, the job runs once per day at 08:00 UTC.
-- **No new events in feed:** Run ingest once locally with Supabase `DATABASE_URL` to seed; then wait for the next daily cron run or call `GET /api/cron/ingest` with `Authorization: Bearer <CRON_SECRET>` manually. For more frequent updates, use an external cron service.
+- **Feed is empty (no errors):** The database has no events yet. Run **migrations** and **ingest** once from your machine, using the **same** Supabase pooler `DATABASE_URL` as in Vercel. From the project root:  
+  `export DATABASE_URL="postgresql://postgres.icbnsataiervthiljrtd:YOUR_PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres"`  
+  then:  
+  `npx tsx lib/db/migrate.ts`  
+  then:  
+  `CLEAR_RSS_BREAKING_NEWS=1 npx tsx lib/ingest/run.ts`  
+  Replace YOUR_PASSWORD and REGION. After that, refresh the app; the feed should show events. The daily cron will add new RSS items over time.
+- **No updates since yesterday / no new events in feed:** The built-in Vercel cron runs **once per day at 08:00 UTC**. To get new events sooner:
+  1. **Trigger ingest now (choose one):**
+     - **From browser or curl:**  
+       `GET https://<your-app>.vercel.app/api/cron/ingest`  
+       with header `Authorization: Bearer <your-CRON_SECRET>`  
+       (or `x-cron-secret: <your-CRON_SECRET>`).  
+       If you get **401 Unauthorized**, add or fix **CRON_SECRET** in Vercel → Settings → Environment Variables, then try again.
+     - **From your machine:**  
+       `DATABASE_URL="<supabase-pooler-uri>" npx tsx lib/ingest/run.ts`  
+       (use the same Supabase URI as in Vercel; this only runs RSS ingest, no mock clear unless you set `CLEAR_RSS_BREAKING_NEWS=1`).
+  2. **Daily cron:** Ensure **CRON_SECRET** is set in Vercel (Production). Without it, the 08:00 UTC cron will fail with 401 and no new events will be added.
+  3. **More frequent updates (e.g. every 30–60 min):** Use an external cron such as [cron-job.org](https://cron-job.org): create a job that calls `GET https://<your-app>.vercel.app/api/cron/ingest` with header `Authorization: Bearer <CRON_SECRET>` on your desired schedule.

@@ -12,11 +12,21 @@ function getDatabaseUrl(): string {
       'DATABASE_URL is not set. Set it in .env.local or your environment.'
     );
   }
-  // Detect direct Supabase host (fails on Vercel). Check raw string so we catch it even if URL parsing fails.
+  // Detect direct Supabase host (fails on Vercel).
   if (url.includes('db.') && url.includes('.supabase.co') && !url.includes('pooler.supabase.com')) {
     throw new Error(
       `DATABASE_URL must use the Supabase pooler, not the direct host (db.xxx.supabase.co). ${POOLER_HELP}`
     );
+  }
+  // Supabase pooler requires username "postgres.PROJECT_REF", not just "postgres". Otherwise: "Tenant or user not found".
+  if (url.includes('pooler.supabase.com')) {
+    const userMatch = url.match(/^postgres(ql)?:\/\/([^:]+):/);
+    const user = userMatch ? userMatch[2] : '';
+    if (user === 'postgres') {
+      throw new Error(
+        'DATABASE_URL username must be postgres.PROJECT_REF (e.g. postgres.icbnsataiervthiljrtd), not "postgres". Copy the full URI from Supabase Settings → Database → Connection string → Transaction mode.'
+      );
+    }
   }
   return url;
 }
